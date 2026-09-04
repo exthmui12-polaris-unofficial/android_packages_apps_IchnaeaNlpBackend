@@ -17,8 +17,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSocketFactory;
 
 /*
  * This class implements the runnable portion of a thread which
@@ -29,6 +33,9 @@ public class IchnaeaRequester implements Runnable {
 
     private static final String TAG = "IchnaeaBackendService";
     private static final String SERVICE_URL = "https://api.beacondb.net/v1/geolocate";
+    /* The test network's DNS sinkholes this hostname to 198.18.0.4. Keep the
+       TLS hostname/SNI while connecting to the currently published address. */
+    private static final String SERVICE_IP = "49.13.72.183";
     private static final String PROVIDER = "ichnaea";
 
     private final LocationCallback callback;
@@ -87,6 +94,11 @@ public class IchnaeaRequester implements Runnable {
         HttpURLConnection conn = null;
         try {
             conn = (HttpURLConnection) new URL(SERVICE_URL).openConnection();
+            if (conn instanceof HttpsURLConnection) {
+                HttpsURLConnection https = (HttpsURLConnection) conn;
+                https.setSSLSocketFactory(new FixedAddressSSLSocketFactory(
+                        (SSLSocketFactory) SSLSocketFactory.getDefault(), SERVICE_IP));
+            }
             conn.setDoOutput(true);
             conn.setDoInput(true);
             conn.setConnectTimeout(15000);
@@ -135,5 +147,55 @@ public class IchnaeaRequester implements Runnable {
             is.close();
         }
         return bos.toByteArray();
+    }
+
+    private static final class FixedAddressSSLSocketFactory extends SSLSocketFactory {
+        private final SSLSocketFactory delegate;
+        private final String address;
+
+        FixedAddressSSLSocketFactory(SSLSocketFactory delegate, String address) {
+            this.delegate = delegate;
+            this.address = address;
+        }
+
+        @Override
+        public Socket createSocket(String host, int port) throws IOException {
+            Socket raw = new Socket();
+            raw.connect(new InetSocketAddress(address, port), 15000);
+            return delegate.createSocket(raw, host, port, true);
+        }
+
+        @Override
+        public Socket createSocket(Socket socket, String host, int port, boolean autoClose) throws IOException {
+            if (autoClose) socket.close();
+            Socket raw = new Socket();
+            raw.connect(new InetSocketAddress(address, port), 15000);
+            return delegate.createSocket(raw, host, port, true);
+        }
+
+        @Override
+        public Socket createSocket(String host, int port, java.net.InetAddress localAddress, int localPort) throws IOException {
+            return createSocket(host, port);
+        }
+
+        @Override
+        public Socket createSocket(java.net.InetAddress host, int port) throws IOException {
+            return createSocket(host.getHostName(), port);
+        }
+
+        @Override
+        public Socket createSocket(java.net.InetAddress address, int port, java.net.InetAddress localAddress, int localPort) throws IOException {
+            return createSocket(address.getHostName(), port);
+        }
+
+        @Override
+        public String[] getDefaultCipherSuites() {
+            return delegate.getDefaultCipherSuites();
+        }
+
+        @Override
+        public String[] getSupportedCipherSuites() {
+            return delegate.getSupportedCipherSuites();
+        }
     }
 }

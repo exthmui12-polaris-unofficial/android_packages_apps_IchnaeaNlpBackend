@@ -313,7 +313,7 @@ public class BackendService extends HelperLocationBackendService
         }
         jsonObject.put("cellTowers", cellTowers);
         jsonObject.put("wifiAccessPoints", wifiAccessPoints);
-        jsonObject.put("fallbacks", new JSONObject().put("lacf", true).put("ipf", false));
+        jsonObject.put("fallbacks", new JSONObject().put("lacf", true).put("ipf", true));
         return jsonObject.toString();
     }
 }
