@@ -4,9 +4,9 @@
   ~ SPDX-License-Identifier: Apache-2.0
   -->
 <resources>
-    <string name="app_name">Mozilla UnifiedNlp Backend</string>
-    <string name="backend_name">Mozilla Location Service</string>
-    <string name="summary">Locate using Mozilla\'s online database</string>
+    <string name="app_name">BeaconDB UnifiedNlp Backend</string>
+    <string name="backend_name">BeaconDB Location Service</string>
+    <string name="summary">Locate using BeaconDB\'s online database</string>
 
     <string name="pref_category_submit">Data contribution</string>
     <string name="pref_title_submit_data">Contribute data</string>

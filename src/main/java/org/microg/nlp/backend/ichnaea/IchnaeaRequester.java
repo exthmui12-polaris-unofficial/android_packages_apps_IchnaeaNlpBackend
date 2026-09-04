@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 /*
  * This class implements the runnable portion of a thread which
@@ -27,8 +28,7 @@ import java.net.URL;
 public class IchnaeaRequester implements Runnable {
 
     private static final String TAG = "IchnaeaBackendService";
-    private static final String SERVICE_URL = "https://location.services.mozilla.com/v1/geolocate?key=%s";
-    private static final String API_KEY = "068ab754-c06b-473d-a1e5-60e7b1a2eb77";
+    private static final String SERVICE_URL = "https://api.beacondb.net/v1/geolocate";
     private static final String PROVIDER = "ichnaea";
 
     private final LocationCallback callback;
@@ -86,18 +86,20 @@ public class IchnaeaRequester implements Runnable {
     private Location request(String request) {
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(String.format(SERVICE_URL, API_KEY)).openConnection();
+            conn = (HttpURLConnection) new URL(SERVICE_URL).openConnection();
             conn.setDoOutput(true);
             conn.setDoInput(true);
-            Log.d(TAG, "request: " + request);
-            conn.getOutputStream().write(request.getBytes());
+            conn.setConnectTimeout(15000);
+            conn.setReadTimeout(15000);
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.getOutputStream().write(request.getBytes(StandardCharsets.UTF_8));
             int respCode = conn.getResponseCode();
             if ((respCode >= 400) && (respCode <= 599)) {
                 Log.w(TAG, "response code 400-600 -> backoff");
                 return null;
             }
             String r = new String(readStreamToEnd(conn.getInputStream()));
-            Log.d(TAG, "response: " + r);
             JSONObject responseJson = new JSONObject(r);
             double lat = responseJson.getJSONObject("location").getDouble("lat");
             double lon = responseJson.getJSONObject("location").getDouble("lng");
@@ -135,4 +137,3 @@ public class IchnaeaRequester implements Runnable {
         return bos.toByteArray();
     }
 }
-
